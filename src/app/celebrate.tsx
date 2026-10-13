@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Button, Chips, Field, Screen, Sub } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { Button, Chips, Field, FormError, Screen, Sub } from '@/components/ui';
 import { useMe, useStore } from '@/lib/store';
 
 const OCCASIONS = ['Birthday', 'Anniversary', 'Wedding', 'Memorial', 'Festival', 'Other'].map((o) => ({ value: o, label: o }));
@@ -52,7 +52,7 @@ export default function Celebrate() {
       <Screen edges={['bottom']}>
         <View style={{ alignItems: 'center', gap: 12, paddingTop: 40 }}>
           <Text style={{ fontSize: 56 }}>🎉</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink, textAlign: 'center' }}>Thank you for sharing your {occasion.toLowerCase()}!</Text>
+          <Text style={{ fontSize: 22, fontFamily: F.display, color: C.ink, textAlign: 'center' }}>Thank you for sharing your {occasion.toLowerCase()}!</Text>
           <Sub style={{ textAlign: 'center' }}>An administrator has been notified and will contact you to collect ₹{amount}.</Sub>
           <Button title="Done" style={{ alignSelf: 'stretch', marginTop: 16 }} onPress={() => router.back()} />
         </View>
@@ -69,7 +69,7 @@ export default function Celebrate() {
         <Field label="Or enter amount (₹)" value={amount} onChangeText={setAmount} keyboardType="number-pad" />
         <Field label="Date of celebration" value={date} onChangeText={setDate} placeholder="e.g. 24 Oct 2026" />
         <Field label="Collection address" value={address} onChangeText={setAddress} multiline />
-        {error ? <Text style={{ color: C.danger }}>{error}</Text> : null}
+        <FormError text={error} />
         <Button title="Pledge & notify admin" icon="gift-outline" variant="accent" loading={sending} onPress={submit} />
       </View>
     </Screen>

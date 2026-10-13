@@ -1,12 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Avatar, Card, H1, Screen, Section, Stat, StatRow, Sub } from '@/components/ui';
+import { C, F, shadow } from '@/components/theme';
+import { Avatar, Card, PageHead, Screen, Section, Sub } from '@/components/ui';
 import { useMe, useStore } from '@/lib/store';
 import { FOOD_CATEGORIES } from '@/lib/types';
 
 /** Rough lifecycle estimate used by food-waste programmes: ~2.5 kg CO2e avoided per kg of food rescued. */
 const CO2_PER_KG = 2.5;
+
+const CATEGORY_TINT = [C.primary, C.accent, C.blue, C.purple, '#2F7F86', '#B23A6B'];
 
 export default function Impact() {
   const me = useMe();
@@ -26,7 +29,7 @@ export default function Impact() {
     .sort((a, b) => b.servings - a.servings);
   const maxDonor = Math.max(1, ...byDonor.map((x) => x.servings));
 
-  const byCategory = FOOD_CATEGORIES.map((c) => ({ c, n: delivered.filter((d) => d.category === c).reduce((a, d) => a + d.servings, 0) }))
+  const byCategory = FOOD_CATEGORIES.map((c, i) => ({ c, tint: CATEGORY_TINT[i], n: delivered.filter((d) => d.category === c).reduce((a, d) => a + d.servings, 0) }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
 
@@ -35,73 +38,95 @@ export default function Impact() {
 
   return (
     <Screen>
-      <H1>Impact</H1>
-      <Sub>Every serving here was food that would otherwise have been thrown away.</Sub>
+      <PageHead title="Impact" body="Every serving here was food that would otherwise have been thrown away." />
 
-      <View style={{ marginTop: 16, gap: 10 }}>
-        <StatRow>
-          <Stat icon="restaurant" label="Servings rescued" value={servings} />
-          <Stat icon="scale" label="Kg of food" value={kg} tint={C.accent} />
-        </StatRow>
-        <StatRow>
-          <Stat icon="cloud-outline" label="Kg CO₂e avoided (est.)" value={Math.round(kg * CO2_PER_KG)} tint={C.blue} />
-          <Stat icon="checkmark-done" label="Posts delivered" value={`${fulfilment}%`} tint={C.purple} />
-        </StatRow>
+      <View style={[{ marginTop: 20, backgroundColor: C.primaryDark, borderRadius: 28, padding: 22, gap: 20 }, shadow.raised]}>
+        <View>
+          <Text style={{ color: '#fff', fontFamily: F.display, fontSize: 56, lineHeight: 58, letterSpacing: -2 }}>{servings.toLocaleString('en-IN')}</Text>
+          <Text style={{ color: C.onDarkSub, fontFamily: F.medium, fontSize: 15 }}>servings rescued and delivered</Text>
+        </View>
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#ffffff22', paddingTop: 16 }}>
+          {[
+            [`${kg}`, 'kg of food'],
+            [`${Math.round(kg * CO2_PER_KG)}`, 'kg CO₂e avoided (est.)'],
+            [`${fulfilment}%`, 'of posts delivered'],
+          ].map(([v, l], i) => (
+            <View key={l} style={{ flex: 1, paddingLeft: i ? 12 : 0, borderLeftWidth: i ? 1 : 0, borderLeftColor: '#ffffff22' }}>
+              <Text style={{ color: '#fff', fontFamily: F.display, fontSize: 22 }}>{v}</Text>
+              <Text style={{ color: C.onDarkSub, fontFamily: F.medium, fontSize: 12, lineHeight: 16 }}>{l}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       {me.role === 'donor' && donorRank > 0 && (
-        <Card style={{ marginTop: 16, backgroundColor: C.primarySoft, borderColor: C.primarySoft }}>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: C.primaryDark }}>You’re #{donorRank} of {byDonor.length} donors</Text>
-          <Sub>
-            {me.points} reward points · earn 10 points per delivered donation plus 1 per 10 servings.
-          </Sub>
+        <Card style={{ marginTop: 14, backgroundColor: C.accentSoft, boxShadow: 'none', flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+          <Text style={{ fontFamily: F.display, fontSize: 34, color: C.accentInk, letterSpacing: -1 }}>#{donorRank}</Text>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 16, fontFamily: F.displayBold, color: C.ink }}>of {byDonor.length} donors</Text>
+            <Sub>{me.points} reward points. You earn 10 per delivered donation, plus 1 per 10 servings.</Sub>
+          </View>
         </Card>
       )}
 
-      <Section title="Food given by donor">
-        <Card style={{ gap: 14 }}>
-          {byDonor.map(({ u, servings: s, kg: k }) => (
-            <View key={u.id} style={{ gap: 6 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontWeight: '600', color: u.id === me.id ? C.primary : C.ink, flex: 1 }} numberOfLines={1}>
-                  {u.name}
-                </Text>
-                <Text style={{ color: C.sub, fontVariant: ['tabular-nums'] }}>
-                  {s} servings · {k} kg
-                </Text>
-              </View>
-              <View style={{ height: 8, backgroundColor: '#EFEDE7', borderRadius: 4 }}>
-                <View style={{ height: 8, width: `${(s / maxDonor) * 100}%`, backgroundColor: C.primary, borderRadius: 4 }} />
-              </View>
-            </View>
-          ))}
-        </Card>
-      </Section>
-
       {byCategory.length > 0 && (
-        <Section title="By category">
-          <Card style={{ gap: 10 }}>
-            {byCategory.map(({ c, n }) => (
-              <View key={c} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: C.ink }}>{c}</Text>
-                <Text style={{ color: C.sub, fontVariant: ['tabular-nums'] }}>
-                  {n} servings · {Math.round((n / servings) * 100)}%
-                </Text>
-              </View>
-            ))}
+        <Section title="What was rescued">
+          <Card style={{ gap: 16 }}>
+            <View style={{ flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', gap: 2 }}>
+              {byCategory.map(({ c, n, tint }) => (
+                <View key={c} style={{ flex: n, backgroundColor: tint }} />
+              ))}
+            </View>
+            <View style={{ gap: 10 }}>
+              {byCategory.map(({ c, n, tint }) => (
+                <View key={c} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: tint }} />
+                  <Text style={{ flex: 1, color: C.ink, fontFamily: F.medium, fontSize: 15 }}>{c}</Text>
+                  <Text style={{ color: C.sub, fontFamily: F.medium, fontVariant: ['tabular-nums'] }}>{n} servings</Text>
+                  <Text style={{ width: 42, textAlign: 'right', color: C.ink, fontFamily: F.bold, fontVariant: ['tabular-nums'] }}>{Math.round((n / servings) * 100)}%</Text>
+                </View>
+              ))}
+            </View>
           </Card>
         </Section>
       )}
 
+      <Section title="Food given by donor">
+        <Card style={{ gap: 16 }}>
+          {byDonor.map(({ u, servings: s, kg: k }) => {
+            const mine = u.id === me.id;
+            return (
+              <View key={u.id} style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                  <Text style={{ fontFamily: mine ? F.bold : F.semibold, color: mine ? C.primary : C.ink, flex: 1, fontSize: 15 }} numberOfLines={1}>
+                    {u.name}
+                    {mine ? ' (you)' : ''}
+                  </Text>
+                  <Text style={{ color: C.sub, fontFamily: F.medium, fontVariant: ['tabular-nums'] }}>
+                    {s} servings, {k} kg
+                  </Text>
+                </View>
+                <View style={{ height: 8, backgroundColor: C.sunk, borderRadius: 4 }}>
+                  <View style={{ height: 8, width: `${(s / maxDonor) * 100}%`, backgroundColor: mine ? C.accent : C.primary, borderRadius: 4 }} />
+                </View>
+              </View>
+            );
+          })}
+        </Card>
+      </Section>
+
       <Section title="Top volunteers">
-        {volunteers.slice(0, 5).map((v, i) => (
-          <Card key={v.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>
-            <Text style={{ width: 20, fontWeight: '800', color: C.faint }}>{i + 1}</Text>
-            <Avatar name={v.name} size={34} tint={C.purple} />
-            <Text style={{ flex: 1, fontWeight: '600', color: C.ink }}>{v.name}</Text>
-            <Text style={{ color: C.sub }}>{v.points} deliveries</Text>
-          </Card>
-        ))}
+        <Card style={{ padding: 0 }}>
+          {volunteers.slice(0, 5).map((v, i) => (
+            <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
+              <Text style={{ width: 22, fontFamily: F.display, fontSize: 17, color: i === 0 ? C.accentInk : C.faint }}>{i + 1}</Text>
+              <Avatar name={v.name} size={36} />
+              <Text style={{ flex: 1, fontFamily: F.semibold, fontSize: 15, color: C.ink }}>{v.name}</Text>
+              {i === 0 && <Ionicons name="trophy" size={16} color={C.accent} />}
+              <Text style={{ color: C.sub, fontFamily: F.medium }}>{v.points} deliveries</Text>
+            </View>
+          ))}
+        </Card>
       </Section>
     </Screen>
   );

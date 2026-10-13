@@ -3,8 +3,9 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Avatar, Badge, Button, Card, Empty, Row, Screen, Section, StatusBadge, Sub, UrgencyBadge } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { CATEGORY_ICON } from '@/components/DonationCard';
+import { Avatar, Badge, Button, Card, Empty, FreshnessMeter, Row, Screen, Section, StatusBadge, Sub } from '@/components/ui';
 import { dateTime, STATUS_LABEL } from '@/lib/format';
 import { isExpired, rewardFor, useMe, useStore } from '@/lib/store';
 import type { Coords, DonationStatus, User } from '@/lib/types';
@@ -52,19 +53,23 @@ export default function DonationDetail() {
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: d.title }} />
 
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
           <StatusBadge d={d} />
-          <UrgencyBadge d={d} />
-          <Badge text={d.category} fg={C.accent} bg={C.accentSoft} />
+          <Badge icon={CATEGORY_ICON[d.category]} text={d.category} fg={C.accentInk} bg={C.accentSoft} />
         </View>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: C.ink }}>{d.title}</Text>
-        <View style={{ flexDirection: 'row', gap: 20, marginTop: 4 }}>
-          <Big n={d.servings} label="servings" />
-          <Big n={d.weightKg} label="kg" />
-          <Big n={rewardFor(d)} label="reward pts" />
-        </View>
+        <Text style={{ fontSize: 30, lineHeight: 34, fontFamily: F.display, color: C.ink, letterSpacing: -0.8 }}>{d.title}</Text>
+        <Sub>From {donor?.name ?? 'a donor'}</Sub>
       </View>
+
+      <Card style={{ marginTop: 18, gap: 16 }}>
+        <View style={{ flexDirection: 'row' }}>
+          <Big n={d.servings} label="servings" />
+          <Big n={d.weightKg} label="kg of food" divider />
+          <Big n={rewardFor(d)} label="reward points" divider />
+        </View>
+        {d.status === 'available' && !expired && <FreshnessMeter d={d} big />}
+      </Card>
 
       {/* Actions */}
       <View style={{ gap: 10, marginTop: 20 }}>
@@ -100,9 +105,9 @@ export default function DonationDetail() {
             >
               <Avatar name={u.name} tint={C.purple} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '700', color: C.ink }}>{u.name}</Text>
+                <Text style={{ fontFamily: F.bold, color: C.ink }}>{u.name}</Text>
                 <Sub>
-                  {u.points} deliveries · {load ? `${load} active pickup${load > 1 ? 's' : ''}` : 'free now'}
+                  {u.points} deliveries, {load ? `${load} active pickup${load > 1 ? 's' : ''}` : 'free now'}
                 </Sub>
               </View>
               <Ionicons name={u.id === d.volunteerId ? 'checkmark-circle' : 'chevron-forward'} size={20} color={u.id === d.volunteerId ? C.primary : C.faint} />
@@ -138,7 +143,7 @@ export default function DonationDetail() {
                     {i < STEPS.length - 1 && <View style={{ width: 2, flex: 1, minHeight: 18, backgroundColor: i < stepIndex ? C.primary : C.line }} />}
                   </View>
                   <View style={{ flex: 1, paddingBottom: 14 }}>
-                    <Text style={{ fontWeight: '600', color: done ? C.ink : C.faint }}>{STATUS_LABEL[s]}</Text>
+                    <Text style={{ fontFamily: F.semibold, color: done ? C.ink : C.faint }}>{STATUS_LABEL[s]}</Text>
                     {at && <Sub>{dateTime(at)}</Sub>}
                   </View>
                 </View>
@@ -151,7 +156,7 @@ export default function DonationDetail() {
       <Section title="Details">
         <Card style={{ gap: 10 }}>
           <Row icon="time-outline">
-            Posted {dateTime(d.createdAt)} · best before {dateTime(d.expiresAt)}
+            Posted {dateTime(d.createdAt)}. Best before {dateTime(d.expiresAt)}.
           </Row>
           <Row icon="location-outline">{d.address}</Row>
           {d.notes ? <Row icon="chatbox-ellipses-outline">{d.notes}</Row> : null}
@@ -172,11 +177,11 @@ export default function DonationDetail() {
   );
 }
 
-function Big({ n, label }: { n: number; label: string }) {
+function Big({ n, label, divider }: { n: number; label: string; divider?: boolean }) {
   return (
-    <View>
-      <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink }}>{n}</Text>
-      <Text style={{ fontSize: 12, color: C.sub }}>{label}</Text>
+    <View style={{ flex: 1, paddingLeft: divider ? 14 : 0, borderLeftWidth: divider ? 1 : 0, borderLeftColor: C.line }}>
+      <Text style={{ fontSize: 26, fontFamily: F.display, color: C.ink, letterSpacing: -0.5 }}>{n}</Text>
+      <Text style={{ fontSize: 12, fontFamily: F.medium, color: C.sub }}>{label}</Text>
     </View>
   );
 }
@@ -186,8 +191,8 @@ function Person({ u, role }: { u: User; role: string }) {
     <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <Avatar name={u.name} />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, color: C.faint, fontWeight: '600' }}>{role.toUpperCase()}</Text>
-        <Text style={{ fontWeight: '700', color: C.ink }}>{u.name}</Text>
+        <Text style={{ fontSize: 12, color: C.sub, fontFamily: F.medium }}>{role}</Text>
+        <Text style={{ fontFamily: F.bold, color: C.ink }}>{u.name}</Text>
         {u.role !== 'volunteer' && <Sub>{u.address}</Sub>}
       </View>
       <Pressable

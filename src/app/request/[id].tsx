@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
+import { C, F } from '@/components/theme';
 import { Button, Card, Chips, Empty, Field, Row, Screen, Section, Sub } from '@/components/ui';
 import { dateTime, timeLeft } from '@/lib/format';
 import { useMe, useStore } from '@/lib/store';
@@ -46,9 +46,9 @@ export default function RequestDetail() {
     <Screen edges={['bottom']}>
       <View style={{ gap: 6 }}>
         <Sub>{ngo?.name}</Sub>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: C.ink }}>{r.title}</Text>
+        <Text style={{ fontSize: 26, fontFamily: F.display, color: C.ink }}>{r.title}</Text>
         <Text style={{ fontSize: 16, color: C.ink }}>
-          {r.servings} servings · needed by {dateTime(r.neededBy)} ({timeLeft(r.neededBy, now)})
+          {r.servings} servings, needed by {dateTime(r.neededBy)} ({timeLeft(r.neededBy, now)})
         </Text>
       </View>
 

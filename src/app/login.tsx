@@ -1,9 +1,9 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Button, Field, Screen, Sub } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { Button, Field, FormError, Screen, Sub } from '@/components/ui';
 import { useStore } from '@/lib/store';
 
 export default function Login() {
@@ -23,11 +23,11 @@ export default function Login() {
         <Sub>Sign in as a donor, NGO, volunteer or administrator.</Sub>
         <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="you@example.com" />
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••" onSubmitEditing={submit} />
-        {error ? <Text style={{ color: C.danger }}>{error}</Text> : null}
+        <FormError text={error} />
         <Button title="Sign in" onPress={submit} />
         <Sub style={{ textAlign: 'center' }}>
           New here?{' '}
-          <Link href="/register" replace style={{ color: C.primary, fontWeight: '700' }}>
+          <Link href="/register" replace style={{ color: C.primary, fontFamily: F.bold }}>
             Create an account
           </Link>
         </Sub>

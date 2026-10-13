@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
+import { C, F } from '@/components/theme';
 import { Avatar, Button, Card, Screen, Sub } from '@/components/ui';
 import { distanceKm } from '@/lib/format';
 import { currentPlace } from '@/lib/location';
@@ -46,10 +46,10 @@ export default function Nearby() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Avatar name={u.name} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '700', fontSize: 15, color: C.ink }}>{u.name}</Text>
+                <Text style={{ fontFamily: F.bold, fontSize: 15, color: C.ink }}>{u.name}</Text>
                 <Sub>{u.address}</Sub>
               </View>
-              {km !== undefined && <Text style={{ fontWeight: '800', color: C.primary }}>{km.toFixed(1)} km</Text>}
+              {km !== undefined && <Text style={{ fontFamily: F.display, fontSize: 17, color: C.primary }}>{km.toFixed(1)} km</Text>}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Action icon="call-outline" label="Call" onPress={() => Linking.openURL(`tel:${u.phone}`)} />
@@ -74,11 +74,11 @@ function Action({ icon, label, onPress }: { icon: React.ComponentProps<typeof Io
         justifyContent: 'center',
         paddingVertical: 10,
         borderRadius: 10,
-        backgroundColor: pressed ? C.primarySoft : '#F3F7F4',
+        backgroundColor: pressed ? '#C9E6D3' : C.primarySoft,
       })}
     >
       <Ionicons name={icon} size={16} color={C.primary} />
-      <Text style={{ color: C.primary, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: C.primary, fontFamily: F.bold }}>{label}</Text>
     </Pressable>
   );
 }

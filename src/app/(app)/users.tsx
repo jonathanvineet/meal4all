@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Linking, Switch, Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Avatar, Badge, Button, Card, Chips, Field, H1, Screen, Section, Sub } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { Avatar, Badge, Button, Card, Chips, Field, FormError, PageHead, Screen, Section, Sub } from '@/components/ui';
 import { HIGH_VOLUNTEER_THRESHOLD, useStore } from '@/lib/store';
 import type { Role, User } from '@/lib/types';
 
@@ -20,8 +20,7 @@ export default function Users() {
 
   return (
     <Screen>
-      <H1>Users</H1>
-      <Sub>Manage restaurants, NGOs and volunteers on the network.</Sub>
+      <PageHead title="Users" body="Manage restaurants, NGOs and volunteers on the network." />
 
       <VolunteerLookup />
 
@@ -45,17 +44,17 @@ function UserRow({ u }: { u: User }) {
   const given = db.donations.filter((d) => d.donorId === u.id && d.status === 'delivered').length;
   const got = db.donations.filter((d) => d.ngoId === u.id && d.status === 'delivered').length;
   const stat =
-    u.role === 'donor' ? `${given} delivered · ${u.points} pts` : u.role === 'ngo' ? `${got} donations received` : `${u.points} deliveries`;
+    u.role === 'donor' ? `${given} delivered, ${u.points} points` : u.role === 'ngo' ? `${got} donations received` : `${u.points} deliveries`;
 
   return (
     <Card style={{ opacity: u.active ? 1 : 0.55 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Avatar name={u.name} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', color: C.ink, fontSize: 15 }}>{u.name}</Text>
+          <Text style={{ fontFamily: F.bold, color: C.ink, fontSize: 15 }}>{u.name}</Text>
           <Sub>{stat}</Sub>
           <Text style={{ color: C.faint, fontSize: 12 }} onPress={() => Linking.openURL(`tel:${u.phone}`)}>
-            {u.phone} · {u.email}
+            {u.phone}, {u.email}
           </Text>
         </View>
         <Switch value={u.active} onValueChange={(v) => setUserActive(u.id, v)} trackColor={{ true: C.primary }} />
@@ -91,15 +90,15 @@ function VolunteerLookup() {
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', paddingTop: 4 }}>
             <Avatar name={found.name} tint={C.purple} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontWeight: '700', color: C.ink }}>{found.name}</Text>
+              <Text style={{ fontFamily: F.bold, color: C.ink }}>{found.name}</Text>
               <Sub>
-                {found.email} · {found.points} deliveries
+                {found.email}, {found.points} deliveries
               </Sub>
             </View>
             {found.points > HIGH_VOLUNTEER_THRESHOLD ? (
-              <Badge text="High" icon="ribbon" fg={C.primaryDark} bg="#D4EADC" />
+              <Badge text="High" icon="ribbon" fg={C.primaryDark} bg={C.primarySoft} />
             ) : (
-              <Badge text="Normal" fg={C.sub} bg="#F0EEE8" />
+              <Badge text="Normal" fg={C.sub} bg={C.sunk} />
             )}
           </View>
         )}
@@ -128,7 +127,7 @@ function AddUser({ role, onDone }: { role: Exclude<Role, 'admin'>; onDone: () =>
       <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
       <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <Field label="Address" value={address} onChangeText={setAddress} />
-      {error ? <Text style={{ color: C.danger }}>{error}</Text> : <Sub>They can sign in with the temporary password welcome123.</Sub>}
+      {error ? <FormError text={error} /> : <Sub>They can sign in with the temporary password welcome123.</Sub>}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button title="Cancel" variant="secondary" small style={{ flex: 1 }} onPress={onDone} />
         <Button title="Add" small style={{ flex: 1 }} onPress={save} />

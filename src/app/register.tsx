@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Button, Chips, Field, Screen, Sub } from '@/components/ui';
+import { Button, Chips, Field, FormError, Screen, Sub } from '@/components/ui';
 import { currentPlace } from '@/lib/location';
 import { useStore } from '@/lib/store';
 import type { Coords, Role } from '@/lib/types';
@@ -69,7 +68,7 @@ export default function Register() {
           onPress={locate}
         />
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 6 characters" />
-        {error ? <Text style={{ color: C.danger }}>{error}</Text> : null}
+        <FormError text={error} />
         <Button title="Create account" onPress={submit} />
       </View>
     </Screen>

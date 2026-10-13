@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Card, Empty, Screen, Sub } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { Card, Empty, IconTile, Screen, Sub } from '@/components/ui';
 import { timeAgo } from '@/lib/format';
 import { useMe, useStore } from '@/lib/store';
 
@@ -32,11 +31,11 @@ export default function Notifications() {
               <Card
                 key={n.id}
                 onPress={n.donationId ? () => router.push({ pathname: '/donation/[id]', params: { id: n.donationId! } }) : undefined}
-                style={[{ flexDirection: 'row', gap: 12 }, fresh && { borderColor: C.accent, backgroundColor: '#FFF9F4' }]}
+                style={[{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }, !fresh && { boxShadow: 'none', backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line }]}
               >
-                <Ionicons name={fresh ? 'notifications' : 'notifications-outline'} size={20} color={fresh ? C.accent : C.faint} />
+                <IconTile icon={n.donationId ? 'fast-food' : 'notifications'} tint={fresh ? C.accentInk : C.faint} bg={fresh ? C.accentSoft : C.sunk} size={38} />
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: C.ink, fontSize: 15, lineHeight: 21 }}>{n.text}</Text>
+                  <Text style={{ color: C.ink, fontSize: 15, lineHeight: 21, fontFamily: fresh ? F.semibold : F.regular }}>{n.text}</Text>
                   <Sub>{timeAgo(n.at)}</Sub>
                 </View>
               </Card>

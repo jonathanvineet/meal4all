@@ -1,10 +1,23 @@
+import {
+  BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_700Bold,
+  BricolageGrotesque_800ExtraBold,
+} from '@expo-google-fonts/bricolage-grotesque';
+import {
+  Figtree_400Regular,
+  Figtree_500Medium,
+  Figtree_600SemiBold,
+  Figtree_700Bold,
+  Figtree_800ExtraBold,
+} from '@expo-google-fonts/figtree';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { C } from '@/components/theme';
+import { C, F } from '@/components/theme';
 import { StoreProvider, useStore } from '@/lib/store';
 
 export default function RootLayout() {
@@ -22,8 +35,18 @@ export default function RootLayout() {
 
 function RootStack() {
   const { ready, me } = useStore();
+  const [fontsLoaded, fontError] = useFonts({
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold,
+    Figtree_400Regular,
+    Figtree_500Medium,
+    Figtree_600SemiBold,
+    Figtree_700Bold,
+    Figtree_800ExtraBold,
+  });
 
-  if (!ready)
+  if (!ready || !(fontsLoaded || fontError))
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg }}>
         <ActivityIndicator color={C.primary} />
@@ -36,7 +59,7 @@ function RootStack() {
         headerStyle: { backgroundColor: C.bg },
         headerShadowVisible: false,
         headerTintColor: C.ink,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontFamily: F.displayBold, fontSize: 18 },
         headerBackButtonDisplayMode: 'minimal',
         contentStyle: { backgroundColor: C.bg },
       }}

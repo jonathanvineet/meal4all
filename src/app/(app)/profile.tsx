@@ -3,8 +3,8 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 
-import { C } from '@/components/theme';
-import { Avatar, Button, Card, Field, H1, Screen, Section, Sub, type IconName } from '@/components/ui';
+import { C, F } from '@/components/theme';
+import { Avatar, Badge, Button, Card, Field, H1, type IconName, Screen, Section, Sub } from '@/components/ui';
 import { ROLE_LABEL } from '@/lib/format';
 import { currentPlace } from '@/lib/location';
 import { useMe, useStore } from '@/lib/store';
@@ -46,11 +46,10 @@ export default function Profile() {
   return (
     <Screen>
       <View style={{ alignItems: 'center', gap: 8, marginTop: 8 }}>
-        <Avatar name={me.name} size={72} />
-        <H1>{me.name}</H1>
-        <Sub>
-          {ROLE_LABEL[me.role]} · {me.email}
-        </Sub>
+        <Avatar name={me.name} size={84} />
+        <H1 style={{ textAlign: 'center', marginTop: 6 }}>{me.name}</H1>
+        <Badge text={ROLE_LABEL[me.role]} fg={C.primary} bg={C.primarySoft} />
+        <Sub>{me.email}</Sub>
       </View>
 
       <Section title="Account" action={!editing && <Button title="Edit" variant="ghost" small onPress={() => setEditing(true)} />}>
@@ -110,17 +109,17 @@ function Item({ icon, label, sub, badge, href, last }: { icon: IconName; label: 
         padding: 16,
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: C.line,
-        backgroundColor: pressed ? '#F7F6F2' : 'transparent',
+        backgroundColor: pressed ? C.bg : 'transparent',
       })}
     >
       <Ionicons name={icon} size={22} color={C.primary} />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: C.ink }}>{label}</Text>
+        <Text style={{ fontSize: 15, fontFamily: F.semibold, color: C.ink }}>{label}</Text>
         {sub && <Sub>{sub}</Sub>}
       </View>
       {!!badge && (
         <View style={{ backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{badge}</Text>
+          <Text style={{ color: C.ink, fontSize: 12, fontFamily: F.display }}>{badge}</Text>
         </View>
       )}
       <Ionicons name="chevron-forward" size={18} color={C.faint} />

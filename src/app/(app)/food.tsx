@@ -2,8 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { DonationCard } from '@/components/DonationCard';
-import { Button, Chips, Empty, H1, Screen, Sub } from '@/components/ui';
+import { CATEGORY_ICON, DonationCard } from '@/components/DonationCard';
+import { Button, Chips, Empty, PageHead, Screen } from '@/components/ui';
 import { distanceKm } from '@/lib/format';
 import { isExpired, useMe, useStore } from '@/lib/store';
 import { FOOD_CATEGORIES, type Donation } from '@/lib/types';
@@ -30,21 +30,20 @@ function FindFood() {
 
   return (
     <Screen>
-      <H1>Find food</H1>
-      <Sub>Accept a donation and assign a volunteer to collect it. Food closest to expiry is shown first.</Sub>
-      <View style={{ gap: 12, marginVertical: 16 }}>
+      <PageHead title="Find food" body="Accept a donation, then assign a volunteer to collect it." />
+      <View style={{ gap: 10, marginTop: 20, marginBottom: 18 }}>
         <Chips
           options={[
-            { value: 'urgent', label: 'Most urgent' },
-            { value: 'near', label: 'Nearest' },
-            { value: 'big', label: 'Largest' },
+            { value: 'urgent', label: 'Most urgent', icon: 'flame' },
+            { value: 'near', label: 'Nearest', icon: 'navigate' },
+            { value: 'big', label: 'Largest', icon: 'people' },
           ]}
           value={sort}
           onChange={setSort}
         />
-        <Chips options={[{ value: 'all', label: 'All' }, ...FOOD_CATEGORIES.map((c) => ({ value: c, label: c }))]} value={cat} onChange={setCat} />
+        <Chips scroll options={[{ value: 'all', label: 'All food' }, ...FOOD_CATEGORIES.map((c) => ({ value: c, label: c, icon: CATEGORY_ICON[c] }))]} value={cat} onChange={setCat} />
       </View>
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 12 }}>
         {list.length ? (
           list.map((d) => (
             <DonationCard
@@ -55,10 +54,12 @@ function FindFood() {
             />
           ))
         ) : (
-          <View style={{ gap: 12 }}>
-            <Empty icon="search-outline" title="Nothing available" body="No donors have surplus food in this category right now." />
-            <Button title="Raise a food request" icon="megaphone-outline" variant="secondary" onPress={() => router.push('/request/new')} />
-          </View>
+          <Empty
+            icon="search-outline"
+            title="Nothing available"
+            body="No donor has surplus food in this category right now. Ask for what you need instead."
+            action={<Button title="Request food" icon="megaphone-outline" variant="secondary" onPress={() => router.push('/request/new')} />}
+          />
         )}
       </View>
     </Screen>
@@ -82,13 +83,19 @@ function DonationList() {
 
   return (
     <Screen>
-      <H1>{me.role === 'admin' ? 'All food' : 'My food'}</H1>
-      <View style={{ marginVertical: 16, gap: 12 }}>
-        {me.role === 'donor' && <Button title="Donate food" icon="add" onPress={() => router.push('/donation/new')} />}
+      <PageHead
+        title={me.role === 'admin' ? 'All food' : 'My food'}
+        right={me.role === 'donor' ? <Button small title="Donate" icon="add" onPress={() => router.push('/donation/new')} /> : undefined}
+      />
+      <View style={{ marginTop: 20, marginBottom: 18 }}>
         <Chips options={FILTERS} value={filter} onChange={setFilter} />
       </View>
-      <View style={{ gap: 10 }}>
-        {list.length ? list.map((d) => <DonationCard key={d.id} d={d} />) : <Empty icon="file-tray-outline" title="Nothing here yet" />}
+      <View style={{ gap: 12 }}>
+        {list.length ? (
+          list.map((d) => <DonationCard key={d.id} d={d} />)
+        ) : (
+          <Empty icon="file-tray-outline" title={`No ${filter === 'closed' ? 'expired or cancelled' : filter} donations`} body={filter === 'active' && me.role === 'donor' ? 'Post surplus food and it will show up here.' : undefined} />
+        )}
       </View>
     </Screen>
   );
