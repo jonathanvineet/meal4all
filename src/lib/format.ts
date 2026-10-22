@@ -58,3 +58,24 @@ export function distanceKm(a: Coords, b: Coords) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** Parses "24/10/2026", "24-10-2026", "2026-10-24" or "24 Oct 2026" into a local date; null if invalid. */
+export function parseDate(text: string): Date | null {
+  const t = text.trim().toLowerCase();
+  let y: number, m: number, d: number;
+  let r: RegExpMatchArray | null;
+  if ((r = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/))) [d, m, y] = [+r[1], +r[2] - 1, +r[3]];
+  else if ((r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) [y, m, d] = [+r[1], +r[2] - 1, +r[3]];
+  else if ((r = t.match(/^(\d{1,2})\s+([a-z]{3})[a-z]*,?\s+(\d{4})$/)) && MONTHS.includes(r[2])) [d, m, y] = [+r[1], MONTHS.indexOf(r[2]), +r[3]];
+  else return null;
+  const date = new Date(y, m, d);
+  return date.getFullYear() === y && date.getMonth() === m && date.getDate() === d ? date : null;
+}
+
+/** "24 Oct 2026" */
+export function dayLabel(date: Date) {
+  const m = MONTHS[date.getMonth()];
+  return `${date.getDate()} ${m[0].toUpperCase()}${m.slice(1)} ${date.getFullYear()}`;
+}

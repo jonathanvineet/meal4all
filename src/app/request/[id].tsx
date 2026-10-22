@@ -5,14 +5,16 @@ import { Linking, Text, View } from 'react-native';
 import { C, F } from '@/components/theme';
 import { Button, Card, Chips, Empty, Field, Row, Screen, Section, Sub } from '@/components/ui';
 import { dateTime, timeLeft } from '@/lib/format';
-import { useMe, useStore } from '@/lib/store';
+import { DonationCard } from '@/components/DonationCard';
+import { matchDonations } from '@/lib/match';
+import { isRequestExpired, useMe, useStore } from '@/lib/store';
 import { useNow } from '@/lib/useNow';
 import { FOOD_CATEGORIES, type FoodCategory } from '@/lib/types';
 
 export default function RequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useMe();
-  const { db, userById, cancelRequest, fulfilRequest } = useStore();
+  const { db, userById, cancelRequest, fulfilRequest, acceptDonation } = useStore();
   const now = useNow();
   const r = db.requests.find((x) => x.id === id);
   const [offering, setOffering] = useState(false);
@@ -29,6 +31,9 @@ export default function RequestDetail() {
     );
 
   const ngo = userById(r.ngoId);
+  const expired = isRequestExpired(r, now);
+  const isOwner = me.role === 'ngo' && me.id === r.ngoId;
+  const matches = isOwner && r.status === 'open' && !expired ? matchDonations(r, db.donations, me.coords, now).slice(0, 5) : [];
 
   const fulfil = () => {
     const kg = parseFloat(weight);
@@ -70,13 +75,34 @@ export default function RequestDetail() {
           <Button title="View donation" icon="arrow-forward" onPress={() => router.push({ pathname: '/donation/[id]', params: { id: r.donationId! } })} />
         )}
         {r.status === 'cancelled' && <Sub style={{ textAlign: 'center' }}>This request was cancelled.</Sub>}
-        {me.role === 'ngo' && me.id === r.ngoId && r.status === 'open' && (
-          <Button title="Cancel request" variant="danger" onPress={() => cancelRequest(r.id)} />
-        )}
-        {me.role === 'donor' && r.status === 'open' && !offering && (
+        {expired && <Sub style={{ textAlign: 'center', color: C.danger }}>The needed-by time has passed, so this request is closed.</Sub>}
+        {isOwner && r.status === 'open' && <Button title="Cancel request" variant="danger" onPress={() => cancelRequest(r.id)} />}
+        {me.role === 'donor' && r.status === 'open' && !expired && !offering && (
           <Button title={`I can provide ${r.servings} servings`} icon="checkmark" onPress={() => setOffering(true)} />
         )}
       </View>
+
+      {isOwner && r.status === 'open' && !expired && (
+        <Section title="Matching food available now">
+          {matches.length ? (
+            matches.map(({ d, cover }) => (
+              <DonationCard
+                key={d.id}
+                d={d}
+                from={me.coords}
+                footer={
+                  <View style={{ gap: 8 }}>
+                    <Sub>{cover >= 1 ? `Covers all ${r.servings} servings` : `Covers ${Math.round(cover * 100)}% of what you need`}</Sub>
+                    <Button small icon="link-outline" title="Accept for this request" onPress={() => acceptDonation(d.id, r.id)} />
+                  </View>
+                }
+              />
+            ))
+          ) : (
+            <Empty icon="search-outline" title="No matching food yet" body="Every donor has been notified. You'll get a notification when one responds." />
+          )}
+        </Section>
+      )}
 
       {offering && (
         <Section title="What will you send?">

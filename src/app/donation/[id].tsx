@@ -7,7 +7,7 @@ import { C, F } from '@/components/theme';
 import { CATEGORY_ICON } from '@/components/DonationCard';
 import { Avatar, Badge, Button, Card, Empty, FreshnessMeter, Row, Screen, Section, StatusBadge, Sub } from '@/components/ui';
 import { dateTime, STATUS_LABEL } from '@/lib/format';
-import { isExpired, rewardFor, useMe, useStore } from '@/lib/store';
+import { isExpired, isRequestExpired, rewardFor, useMe, useStore } from '@/lib/store';
 import type { Coords, DonationStatus, User } from '@/lib/types';
 
 const STEPS: DonationStatus[] = ['available', 'accepted', 'assigned', 'picked', 'delivered'];
@@ -22,7 +22,7 @@ function openMap(address: string, coords?: Coords) {
 export default function DonationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useMe();
-  const { db, userById, acceptDonation, assignVolunteer, advanceDonation } = useStore();
+  const { db, userById, acceptDonation, releaseDonation, assignVolunteer, advanceDonation } = useStore();
   const [picking, setPicking] = useState(false);
   const d = db.donations.find((x) => x.id === id);
 
@@ -43,6 +43,9 @@ export default function DonationDetail() {
   const canAssign = (isMyNgo || me.role === 'admin') && (d.status === 'accepted' || d.status === 'assigned');
   const canCancel = me.id === d.donorId && ['available', 'accepted', 'assigned'].includes(d.status);
   const isMyPickup = me.role === 'volunteer' && d.volunteerId === me.id;
+  const canClaim = me.role === 'volunteer' && d.status === 'accepted' && !d.volunteerId;
+  const canRelease = isMyNgo && (d.status === 'accepted' || d.status === 'assigned');
+  const openRequests = isMyNgo || me.role !== 'ngo' ? [] : db.requests.filter((r) => r.ngoId === me.id && r.status === 'open' && !isRequestExpired(r));
 
   const volunteers = db.users
     .filter((u) => u.role === 'volunteer' && u.active)
@@ -73,9 +76,24 @@ export default function DonationDetail() {
 
       {/* Actions */}
       <View style={{ gap: 10, marginTop: 20 }}>
+        {expired && <Badge icon="alert-circle" text="This food expired before anyone accepted it" fg={C.danger} bg={C.dangerSoft} />}
         {me.role === 'ngo' && d.status === 'available' && !expired && (
           <Button title="Accept this donation" icon="checkmark" onPress={() => acceptDonation(d.id)} />
         )}
+        {me.role === 'ngo' &&
+          d.status === 'available' &&
+          !expired &&
+          openRequests.map((r) => (
+            <Button
+              key={r.id}
+              small
+              variant="secondary"
+              icon="link-outline"
+              title={`Accept for my request "${r.title}"`}
+              onPress={() => acceptDonation(d.id, r.id)}
+            />
+          ))}
+        {canClaim && <Button title="I'll pick this up" icon="bicycle-outline" variant="accent" onPress={() => assignVolunteer(d.id, me.id)} />}
         {canAssign && !picking && (
           <Button
             title={vol ? 'Change volunteer' : 'Assign a volunteer'}
@@ -169,6 +187,16 @@ export default function DonationDetail() {
         {ngo && <Person u={ngo} role="Receiving NGO" />}
         {vol && <Person u={vol} role="Volunteer" />}
       </Section>
+
+      {canRelease && (
+        <Button
+          title="Release to other NGOs"
+          variant="secondary"
+          icon="return-down-back-outline"
+          style={{ marginTop: 24 }}
+          onPress={() => releaseDonation(d.id)}
+        />
+      )}
 
       {canCancel && (
         <Button title="Cancel donation" variant="danger" icon="close-circle-outline" style={{ marginTop: 24 }} onPress={() => advanceDonation(d.id, 'cancelled')} />

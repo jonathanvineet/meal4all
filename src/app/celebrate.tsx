@@ -4,16 +4,23 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { C, F } from '@/components/theme';
-import { Button, Chips, Field, FormError, Screen, Sub } from '@/components/ui';
+import { Badge, Button, Card, Chips, Field, FormError, Screen, Section, Sub } from '@/components/ui';
+import { dayLabel, parseDate } from '@/lib/format';
 import { useMe, useStore } from '@/lib/store';
 
 const OCCASIONS = ['Birthday', 'Anniversary', 'Wedding', 'Memorial', 'Festival', 'Other'].map((o) => ({ value: o, label: o }));
+const QUICK_DATES = [
+  { label: 'Today', date: () => new Date() },
+  { label: 'Tomorrow', date: () => new Date(Date.now() + 86400_000) },
+  { label: 'In a week', date: () => new Date(Date.now() + 7 * 86400_000) },
+];
 const AMOUNTS = [500, 1000, 2500, 5000].map((a) => ({ value: String(a), label: `₹${a}` }));
 
 /** "Happy Moments" from the report: donate money on a special occasion; admins get an SMS to collect it. */
 export default function Celebrate() {
   const me = useMe();
-  const { db, addPledge } = useStore();
+  const { db, addPledge, userById } = useStore();
+  const mine = db.pledges.filter((p) => p.userId === me.id);
   const ngos = db.users.filter((u) => u.role === 'ngo' && u.active);
   const [occasion, setOccasion] = useState('Birthday');
   const [recipientId, setRecipientId] = useState(ngos[0]?.id ?? '');
@@ -25,19 +32,26 @@ export default function Celebrate() {
   const [done, setDone] = useState(false);
 
   const submit = async () => {
-    const amt = parseInt(amount, 10);
+    const amt = /^\d+$/.test(amount.trim()) ? parseInt(amount, 10) : NaN;
     if (!recipientId) return setError('Please select a recipient.');
     if (!amt || amt <= 0) return setError('Please enter an amount greater than 0.');
     if (!address.trim()) return setError('Please enter the collection address.');
-    if (!date.trim()) return setError('Please enter the date of celebration.');
+    if (!date.trim()) return setError('Please choose the date of celebration.');
+    const day = parseDate(date);
+    if (!day) return setError('Enter the date as DD/MM/YYYY, e.g. 24/10/2026.');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (day < today) return setError('The celebration date cannot be in the past.');
+    if (me.phone.replace(/\D/g, '').length < 10) return setError('Add a valid phone number in your profile so the admin can reach you.');
     setError('');
     setSending(true);
 
-    addPledge({ occasion, amount: amt, recipientId, address: address.trim(), date: date.trim() });
+    const when = dayLabel(day);
+    addPledge({ occasion, amount: amt, recipientId, address: address.trim(), date: when });
 
     const recipient = ngos.find((n) => n.id === recipientId)?.name;
     const admins = db.users.filter((u) => u.role === 'admin').map((u) => u.phone);
-    const body = `Dear Administrator,\n${me.name} is ready to donate a sum of Rs.${amt} to ${recipient} for ${occasion} occasion on ${date.trim()}. Please collect money at ${address.trim()}.`;
+    const body = `Dear Administrator,\n${me.name} is ready to donate a sum of Rs.${amt} to ${recipient} for ${occasion} occasion on ${when}. Please collect money at ${address.trim()}. Phone: ${me.phone}`;
     try {
       if (admins.length && (await SMS.isAvailableAsync())) await SMS.sendSMSAsync(admins, body);
     } catch {
@@ -67,10 +81,29 @@ export default function Celebrate() {
         <Chips label="Recipient" options={ngos.map((n) => ({ value: n.id, label: n.name }))} value={recipientId} onChange={setRecipientId} />
         <Chips label="Amount" options={AMOUNTS} value={amount} onChange={setAmount} />
         <Field label="Or enter amount (₹)" value={amount} onChangeText={setAmount} keyboardType="number-pad" />
-        <Field label="Date of celebration" value={date} onChangeText={setDate} placeholder="e.g. 24 Oct 2026" />
+        <Field label="Date of celebration" value={date} onChangeText={setDate} placeholder="DD/MM/YYYY" />
+        <Chips options={QUICK_DATES.map((q) => ({ value: q.label, label: q.label }))} value="" onChange={(l) => setDate(dayLabel(QUICK_DATES.find((q) => q.label === l)!.date()))} />
         <Field label="Collection address" value={address} onChangeText={setAddress} multiline />
         <FormError text={error} />
         <Button title="Pledge & notify admin" icon="gift-outline" variant="accent" loading={sending} onPress={submit} />
+
+        {mine.length > 0 && (
+          <Section title="Your pledges">
+            {mine.map((p) => (
+              <Card key={p.id} style={{ gap: 6 }}>
+                <Text style={{ fontFamily: F.displayBold, fontSize: 16, color: C.ink }}>
+                  ₹{p.amount.toLocaleString('en-IN')} for {p.occasion.toLowerCase()} on {p.date}
+                </Text>
+                <Sub>To {userById(p.recipientId)?.name ?? 'an NGO'}</Sub>
+                {p.collectedAt ? (
+                  <Badge icon="checkmark-circle" text="Collected by admin" fg={C.primary} bg={C.primarySoft} />
+                ) : (
+                  <Badge icon="time-outline" text="Awaiting collection" fg={C.accentInk} bg={C.accentSoft} />
+                )}
+              </Card>
+            ))}
+          </Section>
+        )}
       </View>
     </Screen>
   );

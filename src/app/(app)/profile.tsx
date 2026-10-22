@@ -4,40 +4,52 @@ import { useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 
 import { C, F } from '@/components/theme';
-import { Avatar, Badge, Button, Card, Field, H1, type IconName, Screen, Section, Sub } from '@/components/ui';
-import { ROLE_LABEL } from '@/lib/format';
+import { Avatar, Badge, Button, Card, Field, FormError, H1, type IconName, Screen, Section, Sub } from '@/components/ui';
+import { cloudHost } from '@/lib/cloud';
+import { clock, ROLE_LABEL } from '@/lib/format';
 import { currentPlace } from '@/lib/location';
 import { useMe, useStore } from '@/lib/store';
 
 export default function Profile() {
   const me = useMe();
-  const { db, logout, updateProfile, resetDemo } = useStore();
+  const { db, logout, updateProfile, resetDemo, sync, syncNow } = useStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(me.name);
   const [phone, setPhone] = useState(me.phone);
   const [address, setAddress] = useState(me.address);
   const [locating, setLocating] = useState(false);
+  const [error, setError] = useState('');
   const unread = db.notices.filter((n) => n.userId === me.id && !n.read).length;
 
   const save = () => {
-    updateProfile({ name: name.trim() || me.name, phone: phone.trim(), address: address.trim() });
+    const r = updateProfile({ name: name.trim(), phone: phone.trim(), address: address.trim() });
+    if (!r.ok) return setError(r.error);
+    setError('');
     setEditing(false);
+  };
+
+  const startEdit = () => {
+    setName(me.name);
+    setPhone(me.phone);
+    setAddress(me.address);
+    setError('');
+    setEditing(true);
   };
 
   const locate = async () => {
     setLocating(true);
     const p = await currentPlace();
     setLocating(false);
-    if (p) {
-      updateProfile({ coords: p.coords, ...(p.address ? { address: p.address } : {}) });
-      if (p.address) setAddress(p.address);
-    }
+    if (!p) return setError('Location permission was denied or GPS is unavailable.');
+    setError('');
+    updateProfile({ coords: p.coords, ...(p.address ? { address: p.address } : {}) });
+    if (p.address) setAddress(p.address);
   };
 
   const confirmReset = () => {
     const run = () => resetDemo();
     if (Platform.OS === 'web') return run();
-    Alert.alert('Reset demo data?', 'All donations, requests and accounts go back to the sample data.', [
+    Alert.alert('Reset demo data?', `All donations, requests and accounts go back to the sample data${sync.mode === 'cloud' ? ' for every connected phone' : ''}.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Reset', style: 'destructive', onPress: run },
     ]);
@@ -52,12 +64,13 @@ export default function Profile() {
         <Sub>{me.email}</Sub>
       </View>
 
-      <Section title="Account" action={!editing && <Button title="Edit" variant="ghost" small onPress={() => setEditing(true)} />}>
+      <Section title="Account" action={!editing && <Button title="Edit" variant="ghost" small onPress={startEdit} />}>
         {editing ? (
           <Card style={{ gap: 12 }}>
             <Field label="Name" value={name} onChangeText={setName} />
             <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
             <Field label="Address" value={address} onChangeText={setAddress} multiline />
+            <FormError text={error} />
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Button title="Cancel" variant="secondary" small style={{ flex: 1 }} onPress={() => setEditing(false)} />
               <Button title="Save" small style={{ flex: 1 }} onPress={save} />
@@ -69,8 +82,27 @@ export default function Profile() {
             <Info icon="location-outline" text={me.address || 'No address yet'} />
             <Info icon="navigate-outline" text={me.coords ? `GPS saved (${me.coords.lat.toFixed(3)}, ${me.coords.lng.toFixed(3)})` : 'GPS location not set'} />
             <Button title="Update GPS location" icon="locate-outline" variant="secondary" small loading={locating} onPress={locate} />
+            <FormError text={error} />
           </Card>
         )}
+      </Section>
+
+      <Section title="Data">
+        <Card style={{ gap: 10 }}>
+          <Info
+            icon={sync.mode === 'cloud' ? (sync.state === 'error' ? 'cloud-offline-outline' : 'cloud-done-outline') : 'phone-portrait-outline'}
+            text={
+              sync.mode === 'local'
+                ? 'Saved on this device (offline mode). Set EXPO_PUBLIC_FIREBASE_DB_URL to share data across phones.'
+                : sync.state === 'error'
+                  ? `Cloud unreachable, working offline. ${sync.pending} change${sync.pending === 1 ? '' : 's'} waiting. (${sync.error})`
+                  : sync.state === 'syncing'
+                    ? `Syncing with ${cloudHost}…`
+                    : `Synced with ${cloudHost}${sync.lastSync ? ` at ${clock(sync.lastSync)}` : ''}.`
+            }
+          />
+          {sync.mode === 'cloud' && <Button title="Sync now" icon="sync-outline" variant="secondary" small loading={sync.state === 'syncing'} onPress={syncNow} />}
+        </Card>
       </Section>
 
       <Section title="More">

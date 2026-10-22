@@ -4,7 +4,7 @@ import type { ColorValue } from 'react-native';
 
 import { C, F } from '@/components/theme';
 import type { IconName } from '@/components/ui';
-import { useMe, useStore } from '@/lib/store';
+import { isRequestExpired, useMe, useStore } from '@/lib/store';
 import type { Role } from '@/lib/types';
 
 const icon =
@@ -19,7 +19,7 @@ export default function AppTabs() {
   const me = useMe();
   const { db } = useStore();
   const unread = db.notices.filter((n) => n.userId === me.id && !n.read).length;
-  const openRequests = db.requests.filter((r) => r.status === 'open').length;
+  const openRequests = db.requests.filter((r) => r.status === 'open' && !isRequestExpired(r)).length;
 
   const show = (visible: boolean) => (visible ? {} : { href: null });
 

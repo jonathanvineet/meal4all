@@ -43,3 +43,5 @@ yarn-error.*
 
 AGENTS.md
 /.claude
+# local backend config
+.env

@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 
 import { timeAgo } from '@/lib/format';
-import { HIGH_VOLUNTEER_THRESHOLD, isExpired, useMe, useStore } from '@/lib/store';
+import { HIGH_VOLUNTEER_THRESHOLD, isExpired, isRequestExpired, useMe, useStore } from '@/lib/store';
 import type { Donation, User } from '@/lib/types';
 import { DonationCard } from './DonationCard';
 import { C, F, shadow } from './theme';
@@ -81,7 +81,7 @@ export function DonorHome() {
   const me = useMe();
   const { db } = useStore();
   const active = db.donations.filter((d) => d.donorId === me.id && ACTIVE.has(d.status) && !isExpired(d));
-  const openReqs = db.requests.filter((r) => r.status === 'open');
+  const openReqs = db.requests.filter((r) => r.status === 'open' && !isRequestExpired(r));
 
   return (
     <>
@@ -144,7 +144,8 @@ export function NgoHome() {
 
 export function VolunteerHome() {
   const me = useMe();
-  const { db, advanceDonation, userById } = useStore();
+  const { db, advanceDonation, assignVolunteer, userById } = useStore();
+  const unassigned = db.donations.filter((d) => d.status === 'accepted' && !d.volunteerId).sort((a, b) => a.expiresAt - b.expiresAt);
   const tasks = db.donations.filter((d) => d.volunteerId === me.id && (d.status === 'assigned' || d.status === 'picked'));
   const done = db.donations.filter((d) => d.volunteerId === me.id && d.status === 'delivered');
   const high = me.points > HIGH_VOLUNTEER_THRESHOLD;
@@ -193,9 +194,25 @@ export function VolunteerHome() {
             );
           })
         ) : (
-          <Empty icon="bicycle-outline" title="No pickups assigned" body="NGOs will assign you when food needs moving, and you'll get a notification." />
+          <Empty
+            icon="bicycle-outline"
+            title="No pickups assigned"
+            body="NGOs will assign you when food needs moving, and you'll get a notification. You can also take a waiting pickup below."
+          />
         )}
       </Section>
+
+      {unassigned.length > 0 && (
+        <Section title="Waiting for a volunteer">
+          {unassigned.map((d) => (
+            <DonationCard
+              key={d.id}
+              d={d}
+              footer={<Button small icon="bicycle-outline" title="I'll pick this up" variant="secondary" onPress={() => assignVolunteer(d.id, me.id)} />}
+            />
+          ))}
+        </Section>
+      )}
 
       {done.length > 0 && (
         <Section title="Recently delivered">
@@ -209,9 +226,9 @@ export function VolunteerHome() {
 }
 
 export function AdminHome() {
-  const { db, userById } = useStore();
+  const { db, userById, markPledgeCollected } = useStore();
   const expired = db.donations.filter((d) => isExpired(d)).length;
-  const openReqs = db.requests.filter((r) => r.status === 'open').length;
+  const openReqs = db.requests.filter((r) => r.status === 'open' && !isRequestExpired(r)).length;
   const count = (role: string) => db.users.filter((u) => u.role === role).length;
   const recent = [...db.donations].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
@@ -262,19 +279,32 @@ export function AdminHome() {
 
       {db.pledges.length > 0 && (
         <Section title="Celebration pledges">
-          {db.pledges.slice(0, 5).map((p) => (
-            <Card key={p.id} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <IconTile icon="gift" tint={C.accentInk} bg={C.accentSoft} size={40} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontFamily: F.displayBold, fontSize: 16, color: C.ink }}>
-                  ₹{p.amount.toLocaleString('en-IN')} for {p.occasion.toLowerCase()}
-                </Text>
-                <Sub>
-                  {userById(p.userId)?.name} to {userById(p.recipientId)?.name}. Collect at {p.address} on {p.date}.
-                </Sub>
-              </View>
-            </Card>
-          ))}
+          {[...db.pledges]
+            .sort((a, b) => Number(!!a.collectedAt) - Number(!!b.collectedAt) || b.createdAt - a.createdAt)
+            .slice(0, 8)
+            .map((p) => (
+              <Card key={p.id} style={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                  <IconTile icon="gift" tint={C.accentInk} bg={C.accentSoft} size={40} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ fontFamily: F.displayBold, fontSize: 16, color: C.ink }}>
+                      ₹{p.amount.toLocaleString('en-IN')} for {p.occasion.toLowerCase()}
+                    </Text>
+                    <Sub>
+                      {userById(p.userId)?.name} to {userById(p.recipientId)?.name}. Collect at {p.address} on {p.date}.
+                    </Sub>
+                  </View>
+                </View>
+                {p.collectedAt ? (
+                  <Badge icon="checkmark-circle" text={`Collected ${timeAgo(p.collectedAt)}`} fg={C.primary} bg={C.primarySoft} />
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Button small variant="secondary" icon="call-outline" title="Call donor" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${userById(p.userId)?.phone ?? ''}`)} />
+                    <Button small icon="cash-outline" title="Mark collected" style={{ flex: 1 }} onPress={() => markPledgeCollected(p.id)} />
+                  </View>
+                )}
+              </Card>
+            ))}
         </Section>
       )}
     </>

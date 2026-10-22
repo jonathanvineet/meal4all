@@ -83,6 +83,8 @@ export interface Pledge {
   address: string;
   date: string;
   createdAt: number;
+  /** Set by an administrator once the money has been collected. */
+  collectedAt?: number;
 }
 
 export interface Notice {

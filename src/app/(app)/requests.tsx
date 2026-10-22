@@ -4,31 +4,34 @@ import { Text, View } from 'react-native';
 import { C, F } from '@/components/theme';
 import { Badge, Button, Card, Empty, IconTile, PageHead, Row, Screen, Section, Sub } from '@/components/ui';
 import { timeAgo, timeLeft } from '@/lib/format';
-import { useMe, useStore } from '@/lib/store';
+import { isRequestExpired, useMe, useStore } from '@/lib/store';
+import { useNow } from '@/lib/useNow';
 import type { FoodRequest } from '@/lib/types';
 
 export default function Requests() {
   const me = useMe();
   const { db } = useStore();
+  const now = useNow();
 
   if (me.role === 'ngo') {
     const mine = db.requests.filter((r) => r.ngoId === me.id);
+    const live = (r: FoodRequest) => r.status === 'open' && !isRequestExpired(r, now);
     return (
       <Screen>
         <PageHead title="My requests" body="When you’re short on food, every donor is notified of your request." />
         <Button title="Request food" icon="megaphone-outline" variant="accent" style={{ marginTop: 20 }} onPress={() => router.push('/request/new')} />
         <Section title="Open">
-          {mine.filter((r) => r.status === 'open').map((r) => <RequestCard key={r.id} r={r} />)}
-          {!mine.some((r) => r.status === 'open') && <Empty icon="hand-left-outline" title="No open requests" />}
+          {mine.filter(live).map((r) => <RequestCard key={r.id} r={r} />)}
+          {!mine.some(live) && <Empty icon="hand-left-outline" title="No open requests" />}
         </Section>
-        {mine.some((r) => r.status !== 'open') && (
-          <Section title="Past">{mine.filter((r) => r.status !== 'open').map((r) => <RequestCard key={r.id} r={r} />)}</Section>
+        {mine.some((r) => !live(r)) && (
+          <Section title="Past">{mine.filter((r) => !live(r)).map((r) => <RequestCard key={r.id} r={r} />)}</Section>
         )}
       </Screen>
     );
   }
 
-  const open = db.requests.filter((r) => r.status === 'open').sort((a, b) => a.neededBy - b.neededBy);
+  const open = db.requests.filter((r) => r.status === 'open' && !isRequestExpired(r, now)).sort((a, b) => a.neededBy - b.neededBy);
   return (
     <Screen>
       <PageHead title="Food requests" body="NGOs that need food. Accept one and they’ll send a volunteer to your kitchen." />
@@ -42,7 +45,15 @@ export default function Requests() {
 function RequestCard({ r }: { r: FoodRequest }) {
   const { userById } = useStore();
   const ngo = userById(r.ngoId);
-  const statusColor = r.status === 'open' ? [C.accentInk, C.accentSoft] : r.status === 'fulfilled' ? [C.primary, C.primarySoft] : [C.sub, C.sunk];
+  const expired = isRequestExpired(r);
+  const label = expired ? 'Expired' : r.status[0].toUpperCase() + r.status.slice(1);
+  const statusColor = expired
+    ? [C.danger, C.dangerSoft]
+    : r.status === 'open'
+      ? [C.accentInk, C.accentSoft]
+      : r.status === 'fulfilled'
+        ? [C.primary, C.primarySoft]
+        : [C.sub, C.sunk];
   return (
     <Card onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
@@ -53,8 +64,8 @@ function RequestCard({ r }: { r: FoodRequest }) {
             {ngo?.name}, {timeAgo(r.createdAt)}
           </Sub>
           <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-            <Badge text={r.status[0].toUpperCase() + r.status.slice(1)} fg={statusColor[0]} bg={statusColor[1]} />
-            {r.status === 'open' && <Badge icon="time-outline" text={`needed in ${timeLeft(r.neededBy).replace(' left', '')}`} fg={C.sub} bg={C.sunk} />}
+            <Badge text={label} fg={statusColor[0]} bg={statusColor[1]} />
+            {r.status === 'open' && !expired && <Badge icon="time-outline" text={`needed in ${timeLeft(r.neededBy).replace(' left', '')}`} fg={C.sub} bg={C.sunk} />}
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>

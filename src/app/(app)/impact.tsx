@@ -1,24 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { C, F, shadow } from '@/components/theme';
-import { Avatar, Card, PageHead, Screen, Section, Sub } from '@/components/ui';
+import { Avatar, Button, Card, FormError, PageHead, Screen, Section, Sub } from '@/components/ui';
+import { buildReport, metrics, shareReport } from '@/lib/report';
 import { useMe, useStore } from '@/lib/store';
 import { FOOD_CATEGORIES } from '@/lib/types';
-
-/** Rough lifecycle estimate used by food-waste programmes: ~2.5 kg CO2e avoided per kg of food rescued. */
-const CO2_PER_KG = 2.5;
 
 const CATEGORY_TINT = [C.primary, C.accent, C.blue, C.purple, '#2F7F86', '#B23A6B'];
 
 export default function Impact() {
   const me = useMe();
   const { db } = useStore();
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
   const delivered = db.donations.filter((d) => d.status === 'delivered');
-  const servings = delivered.reduce((a, d) => a + d.servings, 0);
-  const kg = delivered.reduce((a, d) => a + d.weightKg, 0);
-  const posted = db.donations.length;
-  const fulfilment = posted ? Math.round((delivered.length / posted) * 100) : 0;
+  const m = metrics(db);
+  const { servings, kg, fulfilment } = m;
+
+  const exportReport = async () => {
+    setSharing(true);
+    setShareError('');
+    try {
+      await shareReport(buildReport(db, me));
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : 'Could not share the report.');
+    }
+    setSharing(false);
+  };
 
   const byDonor = db.users
     .filter((u) => u.role === 'donor')
@@ -38,7 +48,12 @@ export default function Impact() {
 
   return (
     <Screen>
-      <PageHead title="Impact" body="Every serving here was food that would otherwise have been thrown away." />
+      <PageHead
+        title="Impact"
+        body="Every serving here was food that would otherwise have been thrown away."
+        right={<Button small variant="secondary" icon="share-outline" title="Report" loading={sharing} onPress={exportReport} />}
+      />
+      <FormError text={shareError} />
 
       <View style={[{ marginTop: 20, backgroundColor: C.primaryDark, borderRadius: 28, padding: 22, gap: 20 }, shadow.raised]}>
         <View>
@@ -48,7 +63,7 @@ export default function Impact() {
         <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#ffffff22', paddingTop: 16 }}>
           {[
             [`${kg}`, 'kg of food'],
-            [`${Math.round(kg * CO2_PER_KG)}`, 'kg CO₂e avoided (est.)'],
+            [`${m.co2}`, 'kg CO₂e avoided (est.)'],
             [`${fulfilment}%`, 'of posts delivered'],
           ].map(([v, l], i) => (
             <View key={l} style={{ flex: 1, paddingLeft: i ? 12 : 0, borderLeftWidth: i ? 1 : 0, borderLeftColor: '#ffffff22' }}>
@@ -90,6 +105,24 @@ export default function Impact() {
           </Card>
         </Section>
       )}
+
+      <Section title="Performance">
+        <Card style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }}>
+          {[
+            [m.avgHours !== undefined ? `${m.avgHours.toFixed(1)} h` : '–', 'avg. post to delivery'],
+            [m.requestRate !== undefined ? `${m.requestRate}%` : '–', 'NGO requests fulfilled'],
+            [`${m.expired}`, 'expired before pickup'],
+            [`${m.partners}`, 'partner organisations'],
+            [`${m.volunteers}`, 'active volunteers'],
+            [`₹${m.collected.toLocaleString('en-IN')}`, `collected of ₹${m.pledged.toLocaleString('en-IN')} pledged`],
+          ].map(([v, l]) => (
+            <View key={l} style={{ width: '50%', gap: 2 }}>
+              <Text style={{ fontFamily: F.display, fontSize: 22, color: C.ink }}>{v}</Text>
+              <Sub style={{ fontSize: 12 }}>{l}</Sub>
+            </View>
+          ))}
+        </Card>
+      </Section>
 
       <Section title="Food given by donor">
         <Card style={{ gap: 16 }}>
