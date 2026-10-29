@@ -10,7 +10,7 @@ import type { Role } from '@/lib/types';
 const icon =
   (name: IconName) =>
   function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
-    return <Ionicons name={focused ? name : (`${name}-outline` as IconName)} size={24} color={color} />;
+    return <Ionicons name={focused ? name : (`${name}-outline` as IconName)} size={24} color={color as string} />;
   };
 
 const FOOD_TITLE: Record<Role, string | null> = { donor: 'My food', ngo: 'Find food', volunteer: null, admin: 'All food' };
